@@ -31,9 +31,25 @@ public class MasstransitDirectPublisher(IBus bus) : IBusDirectPublisher
         MethodInfo publishMethod = typeof(IBusDirectPublisher)
             .GetMethods()
             .FirstOrDefault(x => x.GetGenericArguments().Length != 0 && x.GetParameters().Length == 2)!;
+
+        if (publishMethod is null)
+        {
+            throw new InvalidOperationException("No matching publish method found in IBusDirectPublisher.");
+        }
+
         MethodInfo genericPublishMethod = publishMethod.MakeGenericMethod(messageType);
 
-        Task publishTask = (Task)genericPublishMethod.Invoke(this, new object[] { eventEnvelope, cancellationToken });
+        if (genericPublishMethod is null)
+        {
+            throw new InvalidOperationException("No matching publish method found in IBusDirectPublisher.");
+        }
+
+        if (eventEnvelope is null)
+        {
+            throw new InvalidOperationException("No matching publish method found in IBusDirectPublisher.");
+        }
+
+        Task publishTask = (Task)genericPublishMethod.Invoke(this, [eventEnvelope, cancellationToken]);
 
         return publishTask!;
     }

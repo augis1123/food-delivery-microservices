@@ -1,5 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.Json;
+using System.Text;
 using BuildingBlocks.Abstractions.Commands;
 using BuildingBlocks.Abstractions.Events;
 using BuildingBlocks.Abstractions.Events.Internal;
@@ -10,6 +12,7 @@ using BuildingBlocks.Core.Extensions;
 using BuildingBlocks.Core.Types;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Bogus.Bson;
 
 namespace BuildingBlocks.Core.Messaging.MessagePersistence;
 
@@ -148,7 +151,11 @@ public class MessagePersistenceService(
     private async Task ProcessOutbox(StoreMessage storeMessage, CancellationToken cancellationToken)
     {
         var messageType = TypeMapper.GetType(storeMessage.DataType);
-        var eventEnvelope = messageSerializer.Deserialize(storeMessage.Data, messageType);
+        var json = storeMessage.Data;
+        var eventEnvelope = JsonSerializer.Deserialize(json, messageType, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) as IEventEnvelope;
 
         if (eventEnvelope is null)
             return;
@@ -168,39 +175,81 @@ public class MessagePersistenceService(
 
     private async Task ProcessInternal(StoreMessage storeMessage, CancellationToken cancellationToken)
     {
-        var messageType = TypeMapper.GetType(storeMessage.DataType);
-        var internalMessage = serializer.Deserialize(storeMessage.Data, messageType);
-
-        if (internalMessage is null)
-            return;
-
-        if (internalMessage is IDomainNotificationEvent domainNotificationEvent)
+        if (string.IsNullOrEmpty(storeMessage.Data))
         {
-            await mediator.Publish(domainNotificationEvent, cancellationToken);
-
-            logger.LogInformation(
-                "Domain-Notification with id: {EventID} and delivery type: {DeliveryType} processed from the persistence message store",
-                storeMessage.Id,
-                storeMessage.DeliveryType
-            );
+            logger.LogWarning("StoreMessage data is null or empty. Message ID: {MessageID}", storeMessage.Id);
+            return;
         }
 
-        if (internalMessage is IInternalCommand internalCommand)
-        {
-            await mediator.Send(internalCommand, cancellationToken);
+        var messageType = TypeMapper.GetType(storeMessage.DataType);
 
-            logger.LogInformation(
-                "InternalCommand with id: {EventID} and delivery type: {DeliveryType} processed from the persistence message store",
-                storeMessage.Id,
-                storeMessage.DeliveryType
-            );
+        if (messageType == null)
+        {
+            logger.LogWarning("Could not map storeMessage.DataType to a valid type. Message ID: {MessageID}", storeMessage.Id);
+            return;
+        }
+
+        var json = storeMessage.Data;
+
+        try
+        {
+            var internalMessage = JsonSerializer.Deserialize(json, messageType, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            }) as IInternalCommand;
+
+            if (internalMessage is null)
+            {
+                logger.LogWarning("Deserialization failed for message ID: {MessageID}, DataType: {DataType}", storeMessage.Id, storeMessage.DataType);
+                return;
+            }
+
+            if (internalMessage is IDomainNotificationEvent domainNotificationEvent)
+            {
+                await mediator.Publish(domainNotificationEvent, cancellationToken);
+
+                logger.LogInformation(
+                    "Domain-Notification with id: {EventID} and delivery type: {DeliveryType} processed from the persistence message store",
+                    storeMessage.Id,
+                    storeMessage.DeliveryType
+                );
+            }
+
+            else if (internalMessage is IInternalCommand internalCommand)
+            {
+                await mediator.Send(internalCommand, cancellationToken);
+
+                logger.LogInformation(
+                    "InternalCommand with id: {EventID} and delivery type: {DeliveryType} processed from the persistence message store",
+                    storeMessage.Id,
+                    storeMessage.DeliveryType
+                );
+            }
+            else
+            {
+                logger.LogWarning("Deserialized message ID: {MessageID} is not of the expected types (IInternalCommand or IDomainNotificationEvent).", storeMessage.Id);
+            }
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(ex, "Error deserializing message ID: {MessageID} with DataType: {DataType}", storeMessage.Id, storeMessage.DataType);
         }
     }
 
     private Task ProcessInbox(StoreMessage storeMessage, CancellationToken cancellationToken)
     {
         var messageType = TypeMapper.GetType(storeMessage.DataType);
-        var messageEnvelope = messageSerializer.Deserialize(storeMessage.Data, messageType);
+        var json = storeMessage.Data;
+        var messageEnvelope = JsonSerializer.Deserialize(json, messageType, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        if (messageEnvelope == null)
+        {
+            throw new InvalidOperationException($"Deserialized message is null for message type {messageType.FullName}");
+        }
+
 
         return Task.CompletedTask;
     }

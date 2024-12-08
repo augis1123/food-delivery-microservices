@@ -32,7 +32,7 @@ public static class QueryableExtensions
         var result = sieveProcessor.Apply(sieveModel, queryable, applyPagination: false);
 #pragma warning disable AsyncFixer02
         // The provider for the source 'IQueryable' doesn't implement 'IAsyncQueryProvider'. Only providers that implement 'IAsyncQueryProvider' can be used for Entity Framework asynchronous operations.
-        var total = result.Count();
+        var total = await result.CountAsync();
 #pragma warning restore AsyncFixer02
         result = sieveProcessor.Apply(sieveModel, queryable, applyFiltering: false, applySorting: false);
 
@@ -63,7 +63,7 @@ public static class QueryableExtensions
         var result = sieveProcessor.Apply(sieveModel, queryable, applyPagination: false);
 #pragma warning disable AsyncFixer02
         // The provider for the source 'IQueryable' doesn't implement 'IAsyncQueryProvider'. Only providers that implement 'IAsyncQueryProvider' can be used for Entity Framework asynchronous operations.
-        var total = result.Count();
+        var total = await result.CountAsync();
 #pragma warning restore AsyncFixer02
         result = sieveProcessor.Apply(sieveModel, queryable, applyFiltering: false, applySorting: false); // Only applies pagination
 
@@ -99,7 +99,7 @@ public static class QueryableExtensions
         var result = sieveProcessor.Apply(sieveModel, queryable, applyPagination: false);
 #pragma warning disable AsyncFixer02
         // The provider for the source 'IQueryable' doesn't implement 'IAsyncQueryProvider'. Only providers that implement 'IAsyncQueryProvider' can be used for Entity Framework asynchronous operations.
-        var total = result.Count();
+        var total = await result.CountAsync();
 #pragma warning restore AsyncFixer02
         result = sieveProcessor.Apply(sieveModel, queryable, applyFiltering: false, applySorting: false); // Only applies pagination
 
@@ -161,7 +161,7 @@ public static class QueryableExtensions
         var result = sieveProcessor.Apply(sieveModel, queryable, applyPagination: false);
 #pragma warning disable AsyncFixer02
         // The provider for the source 'IQueryable' doesn't implement 'IAsyncQueryProvider'. Only providers that implement 'IAsyncQueryProvider' can be used for Entity Framework asynchronous operations.
-        var total = result.Count();
+        var total = await result.CountAsync();
 #pragma warning restore AsyncFixer02
         result = sieveProcessor.Apply(sieveModel, queryable, applyFiltering: false, applySorting: false); // Only applies pagination
 

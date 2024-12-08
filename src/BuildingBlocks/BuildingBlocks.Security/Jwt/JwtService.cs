@@ -80,7 +80,11 @@ public class JwtService(IOptions<JwtOptions> jwtOptions) : IJwtService
         SymmetricSecurityKey signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SecretKey));
         SigningCredentials signingCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-        var expireTime = now.AddSeconds(_jwtOptions.TokenLifeTimeSecond == 0 ? 300 : _jwtOptions.TokenLifeTimeSecond);
+        const double epsilon = 0.1;
+
+        var expireTime = now.AddSeconds(
+            Math.Abs(_jwtOptions.TokenLifeTimeSecond - 0) < epsilon ? 300 : _jwtOptions.TokenLifeTimeSecond
+        );
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {

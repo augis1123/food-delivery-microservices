@@ -27,7 +27,7 @@ public static class EventEnvelope
         return new EventEnvelope<T>(data, metadata);
     }
 
-    public static IEventEnvelope From(
+    public static IEventEnvelope? From(
         object data,
         Guid correlationId,
         Guid? cautionId = null,
@@ -39,6 +39,12 @@ public static class EventEnvelope
             .FirstOrDefault(x =>
                 x.Name == nameof(From) && x.GetGenericArguments().Length != 0 && x.GetParameters().Length == 4
             );
+
+        if (methodInfo == null)
+        {
+            return null;
+        }
+
         var genericMethod = methodInfo.MakeGenericMethod(data.GetType());
 
         return (IEventEnvelope)genericMethod.Invoke(null, new object[] { data, correlationId, cautionId, headers });
